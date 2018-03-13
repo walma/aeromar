@@ -75,8 +75,8 @@ class ImportFileData
         } catch (ErrorException $error) {
 
         }
-        $currentDateTime = new DateTime();
-        $this->_currentDateTime = new DateTime();
+        $currentDateTime = new \DateTime();
+        $this->_currentDateTime = new \DateTime();
         foreach ($files as $file) {
             if ($file['resourceType'] === 'dir' && $file['displayName'] === $currentDateTime->format('Y-m-d')) {
                 echo "<pre>";
@@ -94,8 +94,8 @@ class ImportFileData
                             echo "<pre>";
                             print_r($fileDate."\t" . $fileTime);
                             echo "</pre>";
-                            $fileDateTime = new DateTime($fileDate . ' ' . $fileTime);
-                        $dd = $currentDateTime->sub(new DateInterval('PT1H'));
+                            $fileDateTime = new \DateTime($fileDate . ' ' . $fileTime);
+                        $dd = $currentDateTime->sub(new \DateInterval('PT1H'));
                         $diff = $fileDateTime->diff($dd);
 
                         if ($diff->h < 1 && $diff->i <= 59) {

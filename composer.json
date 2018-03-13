@@ -11,24 +11,17 @@
     }
   ],
 
+  "autoload": {
+    "psr-4": {
+      "Walma\\Aeromar\\": "src/"
+    }
+  },
+
   "authors": [
     {
       "name": "Dmitriy Timkin",
       "email": "timkindl@gmail.com",
       "role": "Developer"
     }
-  ],
-
-  "autoload": {
-    "psr-4": {
-      "Walma\\": "src/"
-    }
-  },
-
-  "autoload-dev": {
-    "psr-4": {
-      "Walma\\": "src/"
-    }
-  }
-
+  ]
 }
