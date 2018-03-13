@@ -1,0 +1,21 @@
+{
+  "name": "walma/aeromar",
+  "description": "Aeromar",
+  "license": "proprietary",
+  "homepage": "https://github.com/walma/aeromar",
+
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "git@github.com:walma/aeromar.git"
+    }
+  ],
+
+  "authors": [
+    {
+      "name": "Dmitriy Timkin",
+      "email": "timkindl@gmail.com",
+      "role": "Developer"
+    }
+  ]
+}
