@@ -13,7 +13,8 @@ class Account
 {
     private $hlName = 'Accounts';
     private $login;
-    private $accountName, $accountToken, $accountActive, $accountState, $accountAccount;
+    private $accountName, $accountToken, $accountActive, $accountState, $flightNum;
+
     private $accountDateCreate, $accountAuthCode, $accountLocation;
 
     protected $hl, $entity, $entityClass, $query;
@@ -24,18 +25,36 @@ class Account
         $this->entity       = HL\HighloadBlockTable::compileEntity( $this->hl ); //генерация класса
         $this->entityClass  = $this->entity->getDataClass();
         $this->query = new \Bitrix\Main\Entity\Query($this->entity);
-        if ($arAccount !== false)
+        if ($arAccount !== false) {
             $this->add($arAccount);
+        }
+        return $this;
     }
 
     public function isValid()
     {
-        return $this->getLogin() && $this->getAccountAccount();
+        return $this->getLogin();
     }
 
     public function getEntityClass()
     {
         return $this->entityClass;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getAccountFlightNum()
+    {
+        return $this->flightNum;
+    }
+
+    /**
+     * @param mixed $flightNum
+     */
+    public function setAccountFlightNum($flightNum)
+    {
+        $this->flightNum = $flightNum;
     }
 
     /*
@@ -65,11 +84,11 @@ class Account
                 case 'state':
                     $this->setAccountState($value);
                     break;
-                case 'date_create':
-                    $this->setAccountDateCreate($value);
-                    break;
                 case 'auth_code':
                     $this->setAccountAuthCode($value);
+                    break;
+                case 'flight_num':
+                    $this->setAccountFlightNum($value);
                     break;
             }
         }
@@ -82,11 +101,12 @@ class Account
                 'UF_TOKEN'          => $this->getAccountToken(),
                 'UF_STATE'          => $this->getAccountState(),
                 'UF_AUTH_CODE'      => $this->getAccountAuthCode(),
-                'UF_DATE_CREATE'    => $this->getAccountDateCreate(),
+                'UF_DATE_CREATE'    => $this->setAccountDateCreate(),
+                'UF_FLIGHT_NUM'     => $this->getAccountFlightNum(),
             ));
             if (!$res->isSuccess()) {
                 $errors = $res->getErrorMessages();
-                throw new \Exception("add Account: ". $errors);
+                throw new \Exception("add Account: ". print_r($errors, true));
             } else {
                 return $this;
             }
@@ -100,12 +120,12 @@ class Account
      * @param array $account
      *
      * */
-    public function update($id, $account)
+    public function update($id, $data)
     {
-        if (!is_array($account)) throw new \Exception('Update Account: parameter is not an array');
+        if (!is_array($data)) throw new \Exception('Update Account: parameter is not an array');
         if (!$this->getById($id)) return false;
 
-        foreach ($account as $key => $value) {
+        foreach ($data as $key => $value) {
             switch ($key) {
                 case 'login':
                     $this->setLogin($value);
@@ -119,26 +139,14 @@ class Account
                 case 'name':
                     $this->setAccountName($value);
                     break;
-                case 'state':
-                    $this->setAccountState($value);
-                    break;
-                case 'date_create':
-                    $this->setAccountDateCreate($value);
-                    break;
-                case 'auth_code':
-                    $this->setAccountAuthCode($value);
-                    break;
             }
         }
         $accountEntity = $this->entityClass;
         $res = $accountEntity::update($id, array(
-            'UF_LOGIN'          => $this->getLogin(),
-            'UF_NAME'           => $this->getAccountName(),
-            'UF_ACTIVE'         => $this->getAccountActive(),
-            'UF_TOKEN'          => $this->getAccountToken(),
-            'UF_STATE'          => $this->getAccountState(),
-            'UF_AUTH_CODE'      => $this->getAccountAuthCode(),
-            'UF_DATE_CREATE'    => $this->getAccountDateCreate(),
+            'UF_LOGIN'      => $this->getLogin(),
+            'UF_NAME'       => $this->getAccountName(),
+            'UF_ACTIVE'     => $this->getAccountActive(),
+            'UF_TOKEN'      => $this->getAccountToken(),
         ));
         if (!$res->isSuccess()) {
             $errors = $res->getErrorMessages();
@@ -151,14 +159,15 @@ class Account
     public function toArray()
     {
         /*if ($this->isValid()) */return array(
-            'UF_LOGIN'          => $this->getLogin(),
-            'UF_NAME'           => $this->getAccountName(),
-            'UF_ACTIVE'         => $this->getAccountActive(),
-            'UF_TOKEN'          => $this->getAccountToken(),
-            'UF_STATE'          => $this->getAccountState(),
-            'UF_AUTH_CODE'      => $this->getAccountAuthCode(),
-            'UF_DATE_CREATE'    => $this->getAccountDateCreate(),
-            );
+            'UF_LOGIN'       => $this->getLogin(),
+            'UF_NAME'        => $this->getAccountName(),
+            'UF_ACTIVE'      => $this->getAccountActive(),
+            'UF_TOKEN'       => $this->getAccountToken(),
+            'UF_STATE'       => $this->getAccountState(),
+            'UF_AUTH_CODE'   => $this->getAccountAuthCode(),
+            'UF_DATE_CREATE' => $this->getAccountDateCreate(),
+            'UF_FLIGHT_NUM'  => $this->getAccountFlightNum(),
+    );
 //        else
 //            throw new \Exception('toArray: Account is not Valid. ' . print_r($this, true));
 
@@ -168,7 +177,7 @@ class Account
     {
         $Query = $this->query;
         $Query->setSelect(array('*'));
-        $filter = array('ID' => $id, 'UF_ACTIVE' => true);
+        $filter = array('ID' => $id);
         $Query->setFilter($filter);
         $result = $Query->exec();
         if ($row = $result->fetch()) {
@@ -177,11 +186,13 @@ class Account
         return false;
     }
 
-    public function getAllAccounts()
+    public function getAllAccounts($onlyActive = false)
     {
         $Query = $this->query;
         $Query->setSelect(array('*'));
-        $Query->setFilter(array('UF_ACTIVE' => true));
+        if ($onlyActive) {
+            $Query->setFilter(array('UF_ACTIVE' => true));
+        }
         $result = $Query->exec();
         if ($rowAll = $result->fetchAll()) {
             return $rowAll;
@@ -194,10 +205,8 @@ class Account
     {
         $Query = $this->query;
         $Query->setSelect(array('*'));
-        $Query->setFilter(array('UF_TOKEN' => $token, 'UF_STATE' => $state));
+        $Query->setFilter(array('UF_TOKEN' => $token));
         $result = $Query->exec();
-        $result = new CDBResult($result);
-
         if ($row = $result->fetch()) {
             return true;
         } else
@@ -279,9 +288,13 @@ class Account
     /**
      * @param mixed $accountDateCreate
      */
-    public function setAccountDateCreate($accountDateCreate)
+    public function setAccountDateCreate($accountDateCreate = 'now')
     {
-        $this->accountDateCreate = $accountDateCreate;
+        $dateTime = new \DateTime($accountDateCreate, new \DateTimeZone('UTC'));
+        // Формат UTC даты:
+        // YYYY-MM-DD hh:mm:ss
+        $accountDateCreate = date('Y-m-d H:i:s', $dateTime->getTimestamp());
+        $this->accountDateCreate = $dateTime;
     }
 
     /**
@@ -322,8 +335,6 @@ class Account
         $Query->setSelect(array('*'));
         $Query->setFilter(array('ID' => $id));
         $result = $Query->exec();
-        $result = new CDBResult($result);
-
         if ($row = $result->Fetch()) {
             $account = $this->entityClass;
             $res = $account::delete($row['ID']);
