@@ -1,0 +1,42 @@
+{
+  "name": "walma/aeromar",
+  "description": "Aeromar",
+  "type": "library",
+  "keywords": ["logging", "debugging", "monitoring", "errors", "exceptions", "parsing", "xml", "ekam"],
+  "license": "Private",
+  "homepage": "http://github.com/walma/aeromar",
+
+  "repositories": [
+    {
+      "type": "vcs",
+      "url": "https://github.com/walma/aeromar"
+    }
+  ],
+
+  "authors": [
+    {
+      "name": "Dmitriy Timkin",
+      "email": "timkindl@gmail.com",
+      "role": "Developer"
+    }
+  ],
+
+  "support": {
+    "email": "timkindl@gmail.com"
+  },
+
+  "autoload": {
+    "psr-4": {
+      "Walma\\": "src/"
+    }
+  },
+
+  "require": {
+    "nixsolutions/yandex-php-library": "*",
+    "rollbar/rollbar": "^1.4.0"
+  },
+
+  "config": {
+    "process-timeout": 600
+  }
+}
