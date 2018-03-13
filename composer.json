@@ -11,6 +11,12 @@
     }
   ],
 
+  "autoload": {
+    "psr-4": {
+      "Walma\\Aeromar\\": "src/"
+    }
+  },
+
   "authors": [
     {
       "name": "Dmitriy Timkin",
