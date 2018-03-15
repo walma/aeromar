@@ -130,9 +130,9 @@ class Account
                 case 'login':
                     $this->setLogin($value);
                     break;
-                case 'active':
-                    $this->setAccountActive($value);
-                    break;
+//                case 'active':
+//                    $this->setAccountActive($value);
+//                    break;
                 case 'token':
                     $this->setAccountToken($value);
                     break;
@@ -145,7 +145,7 @@ class Account
         $res = $accountEntity::update($id, array(
             'UF_LOGIN'      => $this->getLogin(),
             'UF_NAME'       => $this->getAccountName(),
-            'UF_ACTIVE'     => $this->getAccountActive(),
+//            'UF_ACTIVE'     => $this->getAccountActive(),
             'UF_TOKEN'      => $this->getAccountToken(),
         ));
         if (!$res->isSuccess()) {
@@ -186,7 +186,20 @@ class Account
         return false;
     }
 
-    public function getAllAccounts($onlyActive = false)
+    public function getByToken($token)
+    {
+        $Query = $this->query;
+        $Query->setSelect(array('*'));
+        $filter = array('UF_TOKEN' => $token);
+        $Query->setFilter($filter);
+        $result = $Query->exec();
+        if ($row = $result->fetch()) {
+            return $row;
+        }
+        return false;
+    }
+
+    public function getAllAccounts($onlyActive = true)
     {
         $Query = $this->query;
         $Query->setSelect(array('*'));
@@ -327,6 +340,34 @@ class Account
     public function setAccountName($accountName)
     {
         $this->accountName = $accountName;
+    }
+
+    public function findFreeAccount()
+    {
+        $Query = $this->query;
+        $Query->setSelect(array('ID'));
+        $Query->setFilter(array('=UF_FLIGHT_NUM' => '', 'UF_ACTIVE' => true));
+        $Query->setLimit(1);
+        $result = $Query->exec();
+        if ($row = $result->fetch()) {
+            return $row['ID'];
+        } else
+            return false;
+
+    }
+
+    public function isAnyAccountLinkedTo($registrationCode)
+    {
+        $Query = $this->query;
+        $Query->setSelect(array('ID'));
+        $Query->setFilter(array('=UF_REG_CODE' => $registrationCode, 'UF_ACTIVE' => true));
+        $Query->setLimit(1);
+        $result = $Query->exec();
+        if ($row = $result->fetch()) {
+            return true;
+        } else
+            return false;
+
     }
 
     public function delete($id)
