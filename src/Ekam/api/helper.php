@@ -16,8 +16,11 @@ class Helper
     private $_token;
     public $commonUrl = "";
 
+    static public $requestsCounter = 0;
+
     function __construct()
     {
+//        self::$requestsCounter = 0;
         $this->ch = curl_init();
         curl_setopt($this->ch, CURLOPT_RETURNTRANSFER, true);
         curl_setopt($this->ch, CURLOPT_FOLLOWLOCATION, true);
@@ -91,12 +94,14 @@ class Helper
             ));
             curl_setopt($this->ch, CURLOPT_POSTFIELDS, json_encode($params));
         }
+
+        self::$requestsCounter++;
         $response = curl_exec($this->ch);
 
         $httpcode = curl_getinfo($this->ch, CURLINFO_HTTP_CODE);
         $this->httpcode = $httpcode;
         if ($this->log) {
-            file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/logs/Log.txt", "params" . print_r($params, 1) . "\n\n\n" . print_r(json_decode($response, 1), 1) . "\n\nURL: $url");
+            file_put_contents($_SERVER["DOCUMENT_ROOT"] . "/logs/Log.txt", "Last request:\nParams:\n" . print_r($params, 1) . "\n\n" . print_r(json_decode($response, 1), 1) . "\n\nURL: $url");
         }
 
         $arResponse = json_decode($response, 1);
@@ -105,6 +110,7 @@ class Helper
             $this->response = $arResponse;
             return true;
         } else {
+            $this->clearPostParams();
             if ($httpcode == 403) {
                 $this->error = "[403] Токен не найден или недействителен";
             }
@@ -118,7 +124,7 @@ class Helper
             }
 
             if ($httpcode == 500) {
-                $this->error = "[500] Сервис временно не отвечает";
+                $this->error = "[500] Сервис временно не отвечает / " . $arResponse["error"];
             }
 
             return false;
@@ -182,29 +188,6 @@ class Helper
     public function setToken($token)
     {
         $this->_token = $token;
-    }
-
-    public function closeRetail($token)
-    {
-        $this->setToken($token);
-        $this->get("/api/online/v1/receipt_requests/close_retail_shift");
-    }
-
-    public function oauth($params)
-    {
-        curl_setopt($this->ch, CURLOPT_HTTPHEADER, array(
-            'Accept: application/json',
-            'Content-Type: application/json',
-        ));
-        $this->get('oauth', $params);
-    }
-
-    static function getAuhUrl($cashboxId = null)
-    {
-        $state = base64_encode($_SERVER["HTTP_HOST"]);
-        $addCashboxParam = $cashboxId ? '?cashboxId=' . $cashboxId : '';
-        $redirect = urlencode(\CHTTP::URN2URI("/local/api/redirect.php" . $addCashboxParam));
-        return self::$url . "oauth?client_id=bitrix&redirect_url=$redirect&state=$state";
     }
 
 }

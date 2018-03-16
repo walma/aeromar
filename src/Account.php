@@ -298,16 +298,13 @@ class Account
         return $this->accountDateCreate;
     }
 
-    /**
-     * @param mixed $accountDateCreate
-     */
-    public function setAccountDateCreate($accountDateCreate = 'now')
+    public function setAccountDateCreate()
     {
-        $dateTime = new \DateTime($accountDateCreate, new \DateTimeZone('UTC'));
-        // Формат UTC даты:
-        // YYYY-MM-DD hh:mm:ss
+        $dateTime = new \DateTime('now', new \DateTimeZone('UTC'));
+        $objDateTime = $dateTime->getTimestamp();
+        $dd = ConvertTimeStamp(AddToTimeStamp(array('HH' => -1)), 'FULL');
         $accountDateCreate = date('Y-m-d H:i:s', $dateTime->getTimestamp());
-        $this->accountDateCreate = $dateTime;
+        $this->accountDateCreate = $objDateTime;
     }
 
     /**

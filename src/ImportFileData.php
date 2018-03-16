@@ -19,18 +19,18 @@ class ImportFileData
     const TOKEN = 'AQAAAAAFY-xdAATcbWobDAXuKkguvxm5fcb_3QM';
     const PASSWD = 'a3ee8b05e8eb49ccbab657549de0b718';
 
-    const INITIAL_PATH = "/Aeromar/in/1c";
-    const INITIAL_PATH_NOT_FOUND = "Не найден начальный путь";
-    const FOLDER_CURRENT_DATE_NOT_FOUND = "Не найдена папка с текущей датой в наименовании";
-    const IMPORT_FILE_NOT_FOUND = "Не найден файл для импорта";
-    const FREE_ACCOUNT_NOT_FOUND = "Свободные аккаунты отсутствуют";
-    const CANT_SET_ACCOUNT_TO_BUSY = "Ошибка занятия аккаунта рейсом";
-    const INCLUDE_FOLDER_ATTENTION = "Вложенная папка";
-    const WRONG_FILENAME_FORMAT = "Неверный формат наименования файла, формат должен быть: YYYY-MM-DD-HH-II-SS&param1=value1.xml";
+    const INITIAL_PATH                          = "/Aeromar/in/1c";
+    const INITIAL_PATH_NOT_FOUND                = "Не найден начальный путь";
+    const FOLDER_CURRENT_DATE_NOT_FOUND         = "Не найдена папка с текущей датой в наименовании";
+    const IMPORT_FILE_NOT_FOUND                 = "Не найден файл для импорта";
+    const FREE_ACCOUNT_NOT_FOUND                = "Свободные аккаунты отсутствуют";
+    const CANT_SET_ACCOUNT_TO_BUSY              = "Ошибка занятия аккаунта рейсом";
+    const INCLUDE_FOLDER_ATTENTION              = "Вложенная папка";
+    const WRONG_FILENAME_FORMAT                 = "Неверный формат наименования файла, формат должен быть: YYYY-MM-DD-HH-II-SS&param1=value1.xml";
     const FILENAME_DATA_MISMATCH_CURRENT_FOLDER = "Дата в наименовании файла не соответствует текущей папке";
-    const EMPTY_FILENAME = "Пустое имя файла для парсинга";
-    const ERROR_LOADING_XML = "Ошибка загрузки XML";
-    const ERROR_LINK_REGISTRATION_CODE = "Ошибка привязки регистрационного кода. Один из аккаунтов уже привязан";
+    const EMPTY_FILENAME                        = "Пустое имя файла для парсинга";
+    const ERROR_LOADING_XML                     = "Ошибка загрузки XML";
+    const ERROR_LINK_REGISTRATION_CODE          = "Ошибка привязки регистрационного кода. Один из аккаунтов уже привязан";
 
     /**
      * @var array
@@ -86,7 +86,7 @@ class ImportFileData
         //Устанавливаем полученный токен
         $disk->setAccessToken(empty($token) ? self::TOKEN : $token);
 
-        // Получаем список файлов из директории
+        // Получаем список файлов из начальной папки
         try {
             $files = $disk->directoryContents(self::INITIAL_PATH);
         } catch (DiskRequestException $error) {
@@ -94,29 +94,28 @@ class ImportFileData
             return self::INITIAL_PATH_NOT_FOUND .  "(" . self::INITIAL_PATH . ")";
         }
         $currentDateTime = new \DateTime('now', new \DateTimeZone('UTC'));
+        // сохраним текущее время, время запуска скрипта проверки папки. в дальнейшем будем сравнивать с ним
         $this->_currentDateTime = new \DateTime('now', new \DateTimeZone('UTC'));
+        $flagFoundFolderWithCurrentDate = false;
         foreach ($files as $file) {
-            $flagFoundFolderWithCurrentDate = false;
-            // ищем папку с теущей датой
+            // ищем папку с текущей датой
             // @todo либо если до полуночи меньше часа, то ищем и папку с завтрашним днем.
-            // Если папку с текущим днем не нашли, то генерим ошибку (?)
             // если до полуночи меньше часа и папку с завтрашним днем не нашли, то генерим ошибку
+            // Если папку с текущим днем не нашли, то пише в Rollbar
             if ($file['resourceType'] === 'dir' && $file['displayName'] === $currentDateTime->format('Y-m-d')) {
                 $flagFoundFolderWithCurrentDate = true;
                 // нашли папку с текущей датой
                 // получаем контент искомой папки
                 try {
-                    $filesInDay = $disk->directoryContents($file['href']);
+                    $itemsInDay = $disk->directoryContents($file['href']);
                 } catch (DiskRequestException $diskRequestException) {
                     Rollbar::log(Level::ERROR, $diskRequestException->getMessage());
                     return $diskRequestException->getMessage();
                 }
                 // перебираем файлы
-                foreach ($filesInDay as $item) {
-                    $flagFoundFileWithContentToImport = false;
+                $flagFoundFileWithContentToImport = false;
+                foreach ($itemsInDay as $item) {
                     if ($item['resourceType'] === 'file') {
-//                        $filename = str_replace("&", "\&", $item['displayName']);
-//                        $filename = str_replace(".", "\.", $item['displayName']);
                         $filename = $item['displayName'];
                         if (!preg_match("/(\d{4}(-\d{2}){5})(&\w+=\S+)+(\.+)/", $filename)) {
                             Rollbar::log(Level::INFO, self::WRONG_FILENAME_FORMAT . ". файл: " . $item['displayName']);
@@ -146,6 +145,7 @@ class ImportFileData
                             $dd >= $fileDateTime
                             && $fileDateTime > $this->_currentDateTime
                             && !$fileObj->isExist($item['displayName'])
+                            && $fileObj
                         ) {
                             $flagFoundFileWithContentToImport = true;
 //                            $this->_fileNameForImport = $item['href'];
@@ -159,8 +159,10 @@ class ImportFileData
                                 Rollbar::log(Level::ERROR, self::EMPTY_FILENAME);
                                 return self::EMPTY_FILENAME;
                             }
+                            // запишем в БД какой файл начинаем загружать
                             $addedFile = new Files();
                             $newId = $addedFile->add(['filename' => $item['displayName']]);
+
                             // читаем загруженный файл
                             $data = $this->_parseFile();
                             if (is_string($data)) { // строка с ошибками, иначе вернется массив
@@ -175,6 +177,7 @@ class ImportFileData
                                 Rollbar::log(Level::ERROR, self::FREE_ACCOUNT_NOT_FOUND);
                                 return self::FREE_ACCOUNT_NOT_FOUND;
                             }
+//                            @todo отключим на время тестов
                             $res = $this->importDataToDb($data, $accountId);
                             if (
                                 self::CANT_SET_ACCOUNT_TO_BUSY === $res
@@ -203,13 +206,14 @@ class ImportFileData
                             }
                         }
                     } else { // вложенных папок не должно быть
-                        Rollbar::log(Level::INFO, self::INCLUDE_FOLDER_ATTENTION . " - " . $item['displayName']);
+                        // запишем в роллбар инфу
+                        Rollbar::log(Level::INFO, "В папке [" . $file['displayName'] . "] обнаружилась " . self::INCLUDE_FOLDER_ATTENTION . "(" . $item['displayName'] . ")");
                     }
 
                 }
                 if (!$flagFoundFileWithContentToImport) {
-                    Rollbar::log(Level::INFO, self::IMPORT_FILE_NOT_FOUND . ' в текущей папке ' . $file['displayName']);
-                    continue;
+                    Rollbar::log(Level::ERROR, " В папке [" . $file['displayName'] . "] " . self::IMPORT_FILE_NOT_FOUND);
+                    return " В папке [" . $file['displayName'] . "] " . self::IMPORT_FILE_NOT_FOUND;
                 }
             }
         }
